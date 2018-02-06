@@ -1,4 +1,18 @@
-function Get-CcxData {
+function New-CcxDurationTotalsReport {
+    param (
+        [Parameter(Mandatory)]$SourceCSV,
+        [Parameter(Mandatory)]$DestinationCSV,
+        [switch]$ShowReport
+    )
+
+    $CcxDurationTotals = Get-CcxDurationTotals -Path $SourceCSV
+    $CcxDurationTotals | Export-Csv -Path $DestinationCSV
+    if ($ShowReport) {
+        $CcxDurationTotals | Format-Table -Property *
+    }
+}
+
+function Get-CcxDurationTotals {
     param (
         $Path = "./.private/cx_clean.csv"
     )
@@ -43,12 +57,26 @@ function Get-CcxData {
 
 function Import-CcxCsv {
     param (
+        [ValidateScript({Test-Path -Path $_})]
         [Parameter(Mandatory)]$Path
     )
-        
-    # Get data from CSV file
-    $CcxData = Import-Csv -Path $Path -ErrorAction Stop
+
+    # Get file contents
+    $Content = Get-Content -Path $Path
     
+    # Filter out lines with multiple consecutive commas
+    $ContentArray = $Content.Split('`r`n')
+    $CleanContentArray = $ContentArray | Where-Object {$_ -notmatch ',,,,,'}
+
+    # Build new CSV data
+    $Result = [System.String]::Empty   
+    foreach ($Line in $CleanContentArray) {
+        $Result += $Line + "`r`n"
+    }
+    
+    # Convert to PowerShell objects
+    $CcxData = $Result | ConvertFrom-Csv
+
     # Convert strings to proper .NET object types
     foreach ($DataObject in $CcxData) {
         $DataObject.Extension = [System.UInt16]::Parse($DataObject.Extension)
@@ -70,27 +98,4 @@ function Get-FirstOfArray {
     } else {
         $InputObject
     }
-}
-
-function Import-CcxCsv {
-    param (
-        [ValidateScript({Test-Path -Path $_})]
-        [Parameter(Mandatory)]$Path
-    )
-
-    # Get file contents
-    $Content = Get-Content -Path $Path
-    
-    # Filter out lines with multiple consecutive commas
-    $ContentArray = $Content.Split('`r`n')
-    $CleanContentArray = $ContentArray | Where-Object {$_ -notmatch ',,,,,'}
-
-    # Build new CSV data
-    $Result = [System.String]::Empty   
-    foreach ($Line in $CleanContentArray) {
-        $Result += $Line + "`r`n"
-    }
-    
-    # Convert to PowerShell objects
-    $Result | ConvertFrom-Csv
 }
