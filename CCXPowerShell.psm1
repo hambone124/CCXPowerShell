@@ -25,14 +25,16 @@ function Get-CcxData {
                     $DurationTotal += $Record.Duration
                 }
                 
-                # Return data object
-                [PSCustomObject]@{
-                    'Agent Name' = $FilteredToReasonCode.'Agent Name' | Get-FirstOfArray
-                    'Agent ID' = $FilteredToReasonCode.'Agent ID' | Get-FirstOfArray
-                    Extension = $FilteredToReasonCode.Extension | Get-FirstOfArray
-                    Date = $Date
-                    'Reason Code' = $ReasonCode
-                    'Duration Total' = $DurationTotal
+                # Construct and return data object if duration total is greater than zero
+                if ($DurationTotal -gt [System.TimeSpan]::Zero) {                    
+                    [PSCustomObject]@{
+                        'Agent Name' = $FilteredToReasonCode.'Agent Name' | Get-FirstOfArray
+                        'Agent ID' = $ID
+                        Extension = $FilteredToReasonCode.Extension | Get-FirstOfArray
+                        Date = $Date
+                        'Reason Code' = $ReasonCode
+                        'Duration Total' = $DurationTotal
+                    }                
                 }
             }
         }       
