@@ -71,3 +71,26 @@ function Get-FirstOfArray {
         $InputObject
     }
 }
+
+function Import-CcxCsv {
+    param (
+        [ValidateScript({Test-Path -Path $_})]
+        [Parameter(Mandatory)]$Path
+    )
+
+    # Get file contents
+    $Content = Get-Content -Path $Path
+    
+    # Filter out lines with multiple consecutive commas
+    $ContentArray = $Content.Split('`r`n')
+    $CleanContentArray = $ContentArray | Where-Object {$_ -notmatch ',,,,,'}
+
+    # Build new CSV data
+    $Result = [System.String]::Empty   
+    foreach ($Line in $CleanContentArray) {
+        $Result += $Line + "`r`n"
+    }
+    
+    # Convert to PowerShell objects
+    $Result | ConvertFrom-Csv
+}
