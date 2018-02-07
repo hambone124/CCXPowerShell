@@ -24,32 +24,40 @@ function Get-CcxDurationTotals {
     $AgentIDs = $CcxData | Select-Object -ExpandProperty 'Agent ID' -Unique | Sort-Object
     $Dates = $CcxData.'State Transition Time'.Date | Select-Object -Unique | Sort-Object
     $ReasonCodes = $CcxData.'Reason Code' | Select-Object -Unique | Sort-Object
+    $AgentStates = $CcxData.'Agent State' | Select-Object -Unique | Sort-Object
     
-    # Filter down by Agent ID > Date > Reason Code
+    # Filter down by Agent ID > Date > Reason Code > Agent State
     foreach ($ID in $AgentIDs) {
         $FilteredToID = $CcxData | Where-Object 'Agent ID' -EQ $ID
         foreach ($Date in $Dates) {
             $FilteredToDate = $FilteredToID | Where-Object {$_.'State Transition Time'.Date -eq $Date}
             foreach ($ReasonCode in $ReasonCodes) {
                 $FilteredToReasonCode = $FilteredToDate | Where-Object 'Reason Code' -EQ $ReasonCode
-                
-                # Calculate duration totals for a certain Reason Code on a certain Date for a certain Agent
-                $DurationTotal = [System.TimeSpan]::Zero                
-                foreach ($Record in $FilteredToReasonCode) {
-                    $DurationTotal += $Record.Duration
-                }
-                
-                # Construct and return data object if duration total is greater than zero
-                if ($DurationTotal -gt [System.TimeSpan]::Zero) {                    
-                    [PSCustomObject]@{
-                        'Agent Name' = $FilteredToReasonCode.'Agent Name' | Get-FirstOfArray
-                        'Agent ID' = $ID
-                        Extension = $FilteredToReasonCode.Extension | Get-FirstOfArray
-                        Date = $Date
-                        'Reason Code' = $ReasonCode
-                        'Duration Total' = $DurationTotal
-                    }                
-                }
+                foreach ($State in $AgentStates) {
+                    $FilteredToAgentState = $FilteredToReasonCode | Where-Object 'Agent State' -EQ $State
+                    # Calculate duration totals for a certain Reason Code on a certain Date for a certain Agent
+                    $DurationTotal = [System.TimeSpan]::Zero                
+                    foreach ($Record in $FilteredToAgentState) {
+                        $DurationTotal += $Record.Duration
+                    }
+                    
+                    # Construct and return data object if Agent Name is not null
+                    $AgentName = $FilteredToAgentState.'Agent Name' | Get-FirstOfArray
+                    $Extension = $FilteredToAgentState.Extension | Get-FirstOfArray
+                    $StateTransitionTime = $FilteredToAgentState.'State Transition Time' | Get-FirstOfArray
+
+                    if ($AgentName -ne $null) {                    
+                        [PSCustomObject]@{
+                            'Agent Name' = $AgentName
+                            'Agent ID' = $ID
+                            Extension = $Extension
+                            Date = $Date.ToString("M'/'d'/'yyyy")
+                            'Agent State' = $State
+                            'Reason Code' = $ReasonCode
+                            'Duration Total' = $DurationTotal
+                        }                
+                    }
+                }                
             }
         }       
     }
